@@ -5,7 +5,7 @@ on:
     branches: [ "main", "rel-*" ]
 
 env:
-  NAME: World
+  NAME: Planet
 
 jobs:
 
@@ -23,28 +23,37 @@ jobs:
       - name: Another step
         run: echo "This is another step in the same job"
 
+  gen-matrix:
+    runs-on: ubuntu-22.04
+    outputs:
+      matrix: ${{ steps.execute.outputs.matrix }}
+    steps:
+      - name: Get test combinations
+        id: execute
+        run: |
+          echo Commit message: ${{ github.event.head_commit.message }}
+          combs='{"browser": ["chrome", "firefox"], "device": ["desktop", "mobile"]}'
+          if [[ "${{ github.event.head_commit.message }}" == *@@mobile* ]]; then
+            # If commit message has @@mobile, ignore desktop and execute only for mobile
+            matrix=$(echo $combs | sed -e 's/"desktop", //')
+          else
+            matrix=$combs
+          fi
+          echo "matrix=$matrix" >> $GITHUB_OUTPUT
+
+      - name: Access output of prev step
+        run: echo ${{ steps.execute.outputs.matrix }}
+
   test:
 
     strategy:
-      max-parallel: 2
-      matrix:
-        os: [ubuntu-20.04, ubuntu-22.04]
-        browser: [chrome, firefox]
-        device: [desktop, mobile]
-        include:
-          - os: windows-latest
-            browser: edge
-            device: desktop
-        exclude:
-          - os: ubuntu-20.04
-            browser: chrome
-            device: mobile
+      matrix: ${{ fromJSON(needs.gen-matrix.outputs.matrix) }}
 
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-22.04
 
-    timeout-minutes: 10
+    timeout-minutes: 5
 
-    needs: build
+    needs: [build, gen-matrix]
 
     env:
       NAME: Planet
@@ -53,7 +62,7 @@ jobs:
 
       - name: Demo of how to access current matrix context
         run: |
-          echo "Browser: ${{ matrix.browser }}"
+          echo "Browser: " ${{ matrix.browser }}
           echo "Device: ${{ matrix.device }}"
 
       - name: Step inside test job
@@ -61,5 +70,13 @@ jobs:
 
       - name: Another step
         run: echo "This is another step in the same job"
+
+      - name: Disabled step
+        if: false
+        run: echo "This step may be enabled when debugging"
+
+      - name: Conditional step
+        if: ${{ github.ref == 'refs/heads/main' }}
+        run: echo "Execute this step conditionally, only on main branch"
 
 
