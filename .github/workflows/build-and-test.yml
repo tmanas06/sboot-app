@@ -5,7 +5,7 @@ on:
     branches: [ "main", "rel-*" ]
 
 env:
-  NAME: World1
+  NAME: World
 
 jobs:
 
@@ -25,6 +25,11 @@ jobs:
 
   test:
 
+    strategy:
+      matrix:
+        browser: [chrome, firefox]
+        device: [desktop, mobile]
+
     runs-on: ubuntu-22.04
 
     timeout-minutes: 10
@@ -35,6 +40,11 @@ jobs:
       NAME: Planet
 
     steps:
+
+      - name: Demo of how to access current matrix context
+        run: |
+          echo "Browser:" ${{ matrix.browser }}
+          echo "Device: ${{ matrix.device }}"
 
       - name: Step inside test job
         run: echo "Hello $NAME"
