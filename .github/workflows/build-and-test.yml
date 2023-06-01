@@ -93,4 +93,8 @@ jobs:
             app.log
             err.log
 
+#for scheduling the start and stop at times
+
+# schedule:
+#  -cron: '45 11 * * *' # 11:45 Am Gmt (5:15 PM IST) daily
 
