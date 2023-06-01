@@ -5,7 +5,7 @@ on:
     branches: [ "main", "rel-*" ]
 
 env:
-  NAME: World
+  NAME: Manas
 
 jobs:
 
