@@ -79,4 +79,18 @@ jobs:
         if: ${{ github.ref == 'refs/heads/main' }}
         run: echo "Execute this step conditionally, only on main branch"
 
+      - name: Send some output to logfile
+        run: |
+          echo "Hello ${{ matrix.browser }} ${{ matrix.device }}" > app.log
+          echo "This is another line" >> app.log
+          echo "Some error occurred!" > err.log
+
+      - name: Export results
+        uses: actions/upload-artifact@v3
+        with:
+          name: logs
+          path: |
+            app.log
+            err.log
+
 
