@@ -4,97 +4,47 @@ on:
   push:
     branches: [ "main", "rel-*" ]
 
-env:
-  NAME: Planet
-
 jobs:
 
   build:
 
     runs-on: ubuntu-20.04
 
-    timeout-minutes: 5
+    timeout-minutes: 10
 
     steps:
 
-      - name: Greet user
-        run: echo "Hello $NAME"
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
-      - name: Another step
-        run: echo "This is another step in the same job"
-
-  gen-matrix:
-    runs-on: ubuntu-22.04
-    outputs:
-      matrix: ${{ steps.execute.outputs.matrix }}
-    steps:
-      - name: Get test combinations
-        id: execute
+      - name: Inspect environment
         run: |
-          echo Commit message: ${{ github.event.head_commit.message }}
-          combs='{"browser": ["chrome", "firefox"], "device": ["desktop", "mobile"]}'
-          if [[ "${{ github.event.head_commit.message }}" == *@@mobile* ]]; then
-            # If commit message has @@mobile, ignore desktop and execute only for mobile
-            matrix=$(echo $combs | sed -e 's/"desktop", //')
-          else
-            matrix=$combs
-          fi
-          echo "matrix=$matrix" >> $GITHUB_OUTPUT
+          echo "----------------------------------------------------------"
+          echo Event: ${{ github.event_name }}
+          echo Branch: ${{ github.ref }}
+          echo Repo: ${{ github.repository }}
+          echo "----------------------------------------------------------"
+          echo Home dir: $HOME
+          echo Current dir: $(pwd)
+          echo "----------------------------------------------------------"
+          uname -a
+          lsb_release -a
+          echo "----------------------------------------------------------"
 
-      - name: Access output of prev step
-        run: echo ${{ steps.execute.outputs.matrix }}
-
-  test:
-
-    strategy:
-      matrix: ${{ fromJSON(needs.gen-matrix.outputs.matrix) }}
-
-    runs-on: ubuntu-22.04
-
-    timeout-minutes: 5
-
-    needs: [build, gen-matrix]
-
-    env:
-      NAME: Planet
-
-    steps:
-
-      - name: Demo of how to access current matrix context
-        run: |
-          echo "Browser: " ${{ matrix.browser }}
-          echo "Device: ${{ matrix.device }}"
-
-      - name: Step inside test job
-        run: echo "Hello $NAME"
-
-      - name: Another step
-        run: echo "This is another step in the same job"
-
-      - name: Disabled step
-        if: false
-        run: echo "This step may be enabled when debugging"
-
-      - name: Conditional step
-        if: ${{ github.ref == 'refs/heads/main' }}
-        run: echo "Execute this step conditionally, only on main branch"
-
-      - name: Send some output to logfile
-        run: |
-          echo "Hello ${{ matrix.browser }} ${{ matrix.device }}" > app.log
-          echo "This is another line" >> app.log
-          echo "Some error occurred!" > err.log
-
-      - name: Export results
-        uses: actions/upload-artifact@v3
+      - name: Set up JDK
+        uses: actions/setup-java@v3
         with:
-          name: logs
-          path: |
-            app.log
-            err.log
+          distribution: 'temurin'
+          java-version: 17
+          cache: 'maven'
 
-#for scheduling the start and stop at times
+      - name: Build with Maven
+        run: |
+          version=$(mvn help:evaluate -q -DforceStdout -Dexpression=project.version)
+          echo "Building app version $version ..."
+          mvn clean dependency:build-classpath package -Dmaven.test.skip=true -Dmdep.outputFile=clspath.txt
 
-# schedule:
-#  -cron: '45 11 * * *' # 11:45 Am Gmt (5:15 PM IST) daily
+      - name: Run tests
+        run: mvn test
+
 
